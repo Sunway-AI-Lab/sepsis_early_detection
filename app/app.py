@@ -56,6 +56,7 @@ def predict_sepsis(new_data, model, imputer, scaler, feature_list):
         st.error(f"Prediction error: {e}")
         return None, None
 
+
 # --- Streamlit App UI ---
 st.set_page_config(page_title="Sepsis Prediction Assistant", page_icon="🩺")
 st.title("🧬 Sepsis Prediction Assistant")
@@ -81,44 +82,67 @@ default_values = {
     'HospAdmTime': -0.05, 'Platelets': 200.0
 }
 
-# --- Input Form ---
-st.subheader("📋 Enter Patient Information")
+# --- Units for Features ---
+feature_units = {
+    'HR': 'beats/min',
+    'Temp': '°C',
+    'Resp': 'breaths/min',
+    'WBC': '10^9/L',
+    'Lactate': 'mmol/L',
+    'BUN': 'mg/dL',
+    'MAP': 'mmHg',
+    'Creatinine': 'mg/dL',
+    'Glucose': 'mg/dL',
+    'Potassium': 'mmol/L',
+    'Age': 'years',
+    'ICULOS': 'days',
+    'HospAdmTime': 'days (relative)',
+    'Platelets': '10^3/μL',
+    'Lactate_WBC': 'unitless',
+    'HR_MAP': 'unitless'
+}
+
+# --- Input form ---
+st.subheader("Patient Data Input")
 input_data = {}
 with st.form(key="patient_form"):
     col1, col2 = st.columns(2)
-    
+
     with col1:
         for feature in ['HR', 'Temp', 'Resp', 'WBC', 'Lactate', 'BUN', 'MAP']:
             if feature in feature_list:
+                label = f"{feature} ({feature_units.get(feature, '')})"
                 input_data[feature] = st.number_input(
-                    f"{feature} ({'bpm' if feature == 'HR' else 'mmHg' if feature == 'MAP' else 'unit'})",
-                    min_value=0.0, max_value=1000.0, value=default_values.get(feature, 0.0), step=0.1
+                    label, min_value=0.0, max_value=1000.0, value=default_values.get(feature, 0.0), step=0.1
                 )
-    
+
     with col2:
         for feature in ['Creatinine', 'Glucose', 'Potassium', 'Age', 'ICULOS']:
             if feature in feature_list:
+                label = f"{feature} ({feature_units.get(feature, '')})"
                 input_data[feature] = st.number_input(
-                    f"{feature} ({'mg/dL' if feature in ['Creatinine', 'Glucose', 'BUN'] else 'years'})",
-                    min_value=0.0, max_value=1000.0, value=default_values.get(feature, 0.0), step=0.1
+                    label, min_value=0.0, max_value=1000.0, value=default_values.get(feature, 0.0), step=0.1
                 )
-    
+
     if 'Gender' in feature_list:
-        input_data['Gender'] = st.selectbox("Gender", options=[0, 1], format_func=lambda x: "Male" if x == 0 else "Female")
-    
+        input_data['Gender'] = st.selectbox(
+            "Gender (0 = Male, 1 = Female)", options=[0, 1], format_func=lambda x: "Male" if x == 0 else "Female"
+        )
+
     for feature in ['HospAdmTime', 'Platelets']:
         if feature in feature_list:
+            label = f"{feature} ({feature_units.get(feature, '')})"
             input_data[feature] = st.number_input(
-                f"{feature}", min_value=-1000.0, max_value=1000.0, value=default_values.get(feature, 0.0), step=0.01
+                label, min_value=-1000.0, max_value=1000.0, value=default_values.get(feature, 0.0), step=0.01
             )
-    
+
+    # Interaction features
     if 'Lactate_WBC' in feature_list and 'Lactate' in input_data and 'WBC' in input_data:
         input_data['Lactate_WBC'] = input_data['Lactate'] / (input_data['WBC'] + 1e-6)
     if 'HR_MAP' in feature_list and 'HR' in input_data and 'MAP' in input_data:
         input_data['HR_MAP'] = input_data['HR'] / (input_data['MAP'] + 1e-6)
-    
-    submit_button = st.form_submit_button(label="🔍 Predict Sepsis")
 
+    submit_button = st.form_submit_button(label="Predict Sepsis")
 # --- Prediction Output ---
 if submit_button:
     st.subheader("📈 Prediction Results")
